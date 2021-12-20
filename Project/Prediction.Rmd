@@ -1,0 +1,534 @@
+---
+title: "STAT_835_Project"
+author: "Biruk"
+date: "11/7/2021"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+
+```
+
+## Introduction
+
+The data is related with direct marketing campaigns of a Portuguese banking institution. The marketing campaigns were based on phone calls. Often, more than one contact to the same client was required, in order to access if the product (bank term deposit) would be ('yes') or not ('no') subscribed.
+
+Input variables:
+bank client data:
+   
+  * 1 - age (numeric)
+  * 2 - job : type of job (categorical: 
+  "admin.","blue-collar","entrepreneur","housemaid","management","retired","self-employed","services",
+  student","technician","unemployed","unknown")
+  * 3 - marital : marital status (categorical: "divorced","married","single","unknown"; note:
+  "divorced" means divorced or widowed)
+  * 4 - education (categorical:
+  "basic.4y","basic.6y","basic.9y","high.school","illiterate","professional.course","university.degree
+  ,"unknown")
+  * 5 - default: has credit in default? (categorical: "no","yes","unknown")
+  * 6 - housing: has housing loan? (categorical: "no","yes","unknown")
+  * 7 - loan: has personal loan? (categorical: "no","yes","unknown")
+   # related with the last contact of the current campaign:
+  * 8 - contact: contact communication type (categorical: "cellular","telephone") 
+  * 9 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
+  * 10 - day_of_week: last contact day of the week (categorical: "mon","tue","wed","thu","fri")
+  * 11 - duration: last contact duration, in seconds (numeric).
+  
+  Important note:  this attribute highly affects the output target (e.g., if duration=0 then y="no"). Yet, the duration is not known before a call is performed. Also, after the end of the call y is obviously known. Thus, this input should only be included for benchmark purposes and should be discarded if the intention is to have a realistic predictive model.
+   # other attributes:
+  
+  * 12 - campaign: number of contacts performed during this campaign and for this client (numeric,
+  includes last contact)
+  * 13 - pdays: number of days that passed by after the client was last contacted from a previous 
+  * 14 - previous: number of contacts performed before this campaign and for this client (numeric)
+  * 15 - poutcome: outcome of the previous marketing campaign (categorical:
+  "failure","nonexistent","success")
+   # social and economic context attributes
+  * 16 - emp.var.rate: employment variation rate - quarterly indicator (numeric)
+  * 17 - cons.price.idx: consumer price index - monthly indicator (numeric)     
+  * 18 - cons.conf.idx: consumer confidence index - monthly indicator (numeric)     
+  * 19 - euribor3m: euribor 3 month rate - daily indicator (numeric)
+  * 20 - nr.employed: number of employees - quarterly indicator (numeric)
+
+## Source of the data
+https://archive.ics.uci.edu/ml/datasets/bank+marketing
+
+# Dataset
+
+```{r cars}
+rm(list = ls())
+graphics.off()
+################
+# Load packages
+library(psych)
+library(TraMineR)
+library(faraway)
+library(car)
+library(betareg)
+library(lmtest)
+library(epiDisplay)
+library(rcompanion)
+library(dplyr)
+library(leaps)
+library(readxl)
+library(tidyverse)
+library(skimr)
+library(sjPlot)
+library(mlbench)
+library(questionr)
+library(knitr)
+library(ggplot2)
+library(tools)
+library(xtable)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(cowplot)
+library(hexbin)
+## Import Data
+library(readr)
+Portugal_bank <- read_csv("Portugal_bank.csv")
+
+
+Portugal_bank$marital<-as.factor(Portugal_bank$marital)
+Portugal_bank$education<-as.factor(Portugal_bank$education)
+Portugal_bank$default<-as.factor(Portugal_bank$default)
+Portugal_bank$housing<-as.factor(Portugal_bank$housing)
+Portugal_bank$loan<-as.factor(Portugal_bank$loan)
+Portugal_bank$job<-as.factor(Portugal_bank$job)
+Portugal_bank$y<-as.factor(Portugal_bank$y)
+Portugal_bank$contact<-as.factor(Portugal_bank$contact)
+Portugal_bank$month<-as.factor(Portugal_bank$month)
+Portugal_bank$day_of_week<-as.factor(Portugal_bank$day_of_week)
+Portugal_bank$duration<-as.numeric(Portugal_bank$duration)
+Portugal_bank$campaign<-as.numeric(Portugal_bank$campaign)
+Portugal_bank$emp.var.rate<-as.numeric(Portugal_bank$emp.var.rate)
+Portugal_bank$cons.price.idx<-as.numeric(Portugal_bank$cons.price.idx)
+Portugal_bank$cons.conf.idx<-as.numeric(Portugal_bank$cons.conf.idx)
+Portugal_bank$poutcome<-as.factor(Portugal_bank$poutcome)
+levels(Portugal_bank$poutcome)
+summary(Portugal_bank)
+str(Portugal_bank)
+
+```
+
+## Quick Explore
+
+Any missing Values?
+
+
+```{r}
+# Summary of the dataset
+summary(Portugal_bank)
+# missing data - No missing Values
+sum(is.na(Portugal_bank))
+which(is.na(Portugal_bank))
+colSums(is.na(Portugal_bank))
+# Structure
+str(Portugal_bank)
+
+
+
+```
+
+
+
+```{r}
+```
+
+# Exploratory Data Analysis (EDA)
+
+Using ggplot() function to visualize and explore the variables.
+
+```{r}
+# Age 
+fig_age<-Portugal_bank %>% 
+  ggplot(aes(x=age)) + 
+  geom_freqpoly(binwidth = 0.05, size = 1.2, color = "black") + 
+  ggtitle("Age Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+# Job
+fig_job<-Portugal_bank %>% 
+  ggplot(aes(x=job)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Job Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+
+### Personal Loan 
+fig_loan<-Portugal_bank %>% 
+  ggplot(aes(x=loan)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Loan Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+### Marital status 
+fig_marital<-Portugal_bank %>% 
+  ggplot(aes(x=marital)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Marital Status Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+### Eduaction 
+fig_edu<-Portugal_bank %>% 
+  ggplot(aes(x=education)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Education Distribution") +
+  theme(axis.text = element_text(size = 6),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+## Default
+fig_default<-Portugal_bank %>% 
+  ggplot(aes(x=default)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Default Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+  
+
+## Housing loan 
+fig_houseing<-Portugal_bank %>% 
+  ggplot(aes(x=housing)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Housing loan Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+  
+
+## Contact 
+fig_contact<-Portugal_bank %>% 
+  ggplot(aes(x=contact)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Contact Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+## Campaign 
+fig_campaign<-Portugal_bank %>% 
+  ggplot(aes(x=campaign)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Campaign Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+# Subscription
+fig_subscription<-Portugal_bank %>% 
+  ggplot(aes(x=y)) +
+  geom_bar(position = "dodge") + 
+  ggtitle("Subscription Distribution") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 15, face = "bold"))
+
+cowplot::plot_grid(fig_age, fig_edu, fig_job, fig_marital, ncol = 2)
+cowplot::plot_grid(fig_loan, fig_houseing, fig_default, ncol = 2)
+cowplot::plot_grid(fig_subscription, fig_contact, fig_campaign, ncol = 2)
+
+### Trying to predict the odds of people saying yes as age increases by 1.
+
+##########################
+# Visualizing relationship of two or more variables.
+### Age
+tab_age <- table(Portugal_bank$age, Portugal_bank$y)
+tab_1 <- as.data.frame(prop.table(tab_age, 2))
+colnames(tab_1) <-  c("age", "y", "percent")
+
+sub_age<-tab_1 %>% 
+  ggplot(aes(x=age, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Age") +
+  ylab("Percent") + 
+  scale_x_discrete(breaks = seq(18,90, 5)) +
+  ggtitle("(a) Subscription vs Age") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+tab_job <- table(Portugal_bank$job, Portugal_bank$y)
+tab_2 <- as.data.frame(prop.table(tab_job, 2))
+colnames(tab_2) <-  c("Job", "y", "percent")
+
+sub_job<-tab_2 %>% 
+  ggplot(aes(x=Job, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Job") +
+  ylab("Percent") + 
+  ggtitle("(b) Subscription vs Job") +
+  theme(axis.text = element_text(size = 5),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+tab_marital <- table(Portugal_bank$marital, Portugal_bank$y)
+tab_3 <- as.data.frame(prop.table(tab_marital, 2))
+colnames(tab_3) <-  c("Marital", "y", "percent")
+
+sub_marital<-tab_3 %>% 
+  ggplot(aes(x=Marital, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Marital Status") +
+  ylab("Percent") + 
+  ggtitle("(c) Subscription vs Marital Status") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+tab_edu <- table(Portugal_bank$education, Portugal_bank$y)
+tab_4 <- as.data.frame(prop.table(tab_edu, 2))
+colnames(tab_4) <-  c("Edu", "y", "percent")
+
+sub_edu<-tab_4 %>% 
+  ggplot(aes(x=Edu, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Education") +
+  ylab("Percent") + 
+  ggtitle("(d) Subscription vs Education") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+tab_conatact <- table(Portugal_bank$contact, Portugal_bank$y)
+tab_5 <- as.data.frame(prop.table(tab_conatact, 2))
+colnames(tab_5) <-  c("Contact", "y", "percent")
+
+sub_contact<-tab_5 %>% 
+  ggplot(aes(x=Contact, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Contact") +
+  ylab("Percent") + 
+  ggtitle("(e) Subscription vs Contact") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+
+tab_month <- table(Portugal_bank$month, Portugal_bank$y)
+tab_6 <- as.data.frame(prop.table(tab_month, 2))
+colnames(tab_6) <-  c("Month", "y", "percent")
+
+sub_month<-tab_6 %>% 
+  ggplot(aes(x=Month, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Month") +
+  ylab("Percent") + 
+  ggtitle("(f) Subscription vs Month") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+
+tab_duration <- table(Portugal_bank$duration, Portugal_bank$y)
+tab_7 <- as.data.frame(prop.table(tab_duration, 2))
+colnames(tab_7) <-  c("Duration", "y", "percent")
+
+sub_Duration<-tab_7 %>% 
+  ggplot(aes(x=Duration, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Duration") +
+  ylab("Percent") + 
+  ggtitle("(g) Subscription vs Duration") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+
+tab_previous <- table(Portugal_bank$poutcome, Portugal_bank$y)
+tab_8 <- as.data.frame(prop.table(tab_previous, 2))
+colnames(tab_8) <-  c("Previous", "y", "percent")
+
+sub_previous<-tab_8 %>% 
+  ggplot(aes(x=Previous, y=percent, fill=y)) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.75) +
+  xlab("Previous Subscription") +
+  ylab("Percent") + 
+  ggtitle("(h) Subscription vs Previous Subscription") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 13),
+        plot.title = element_text(size = 13, face = "bold"))
+
+cowplot::plot_grid(sub_age, sub_job, sub_marital, sub_edu, ncol = 2)
+cowplot::plot_grid(sub_contact, sub_month, sub_Duration, sub_previous, ncol = 2)
+
+
+```
+
+## Fit the logistic Reg
+
+
+```{r}
+attach(Portugal_bank)
+Portugal_bank<-Portugal_bank[-c(11)]
+
+names(Portugal_bank)
+str(Portugal_bank)
+f1<-glm(y~., family = binomial(link = "logit"), data = Portugal_bank)
+
+summary(f1)
+ncol(Portugal_bank)
+nrow(Portugal_bank)
+str(Portugal_bank)
+# pick the best variables
+
+
+############# Model selection - AIC-step wise
+library(MASS)
+stepaic<-stepAIC(f1)
+stepaic$aic
+
+
+head(stepaic$model)
+
+kable(stepaic$coefficients)
+stepaic$anova
+stepaic$formula
+
+
+
+
+
+
+
+
+
+
+
+```
+
+## CHoose the best variables
+
+```{r}
+library(faraway)
+pairs.panels(Portugal_bank)
+# pick the best variables based on p-values
+Port_bank<-Portugal_bank[c(1,8,9,11,14,15,16,17,20)] # based on their Step wise AIC selection.
+str(Port_bank)
+names(Port_bank)
+################### Automatic Model selection ##########
+mod.full <- regsubsets(y ~ .,data = Portugal_bank, really.big = T)
+regfull<-summary(mod.full)
+#################### 
+## Choose a model that maximize the adjRsq, minimize BIC and CP
+##
+(bicfull <- which.min(regfull$bic))
+(adjr2full <- which.min(regfull$adjr2))
+
+with(regfull, round(cbind(which,adjr2,bic),3))
+par(mfrow=c(2,3))
+plot(regfull$adjr2, xlab="Number of Variables ", ylab="Adjusted RSq", type='b'
+     , pch=20, main = "(a) Adusted Rsq")
+points(which.max(regfull$adjr2), regfull$adjr2[which.max(regfull$adjr2)], col="red", cex=2, pch =20)
+
+
+plot(regfull$bic, xlab="Number of Variables ",ylab="BIC", type='b'
+     , pch=20, main = "(b) BIC")
+points(which.min(regfull$bic), regfull$bic[which.min(regfull$bic)], col="red", cex=2, pch =20)
+
+
+plot(regfull$cp, xlab="Number of Variables ",ylab="CP", type='b'
+     , pch=20, main = "(c) Cp")
+points(which.min(regfull$cp), regfull$cp[which.min(regfull$cp)], col="red", cex=2, pch =20)
+
+plot(mod.full,scale="adjr2", main = "(d) Adjused Rsq")
+plot(mod.full,scale="bic", main = "(e) BIC")
+plot(mod.full, scale="Cp", main = "(f) Cp")
+
+coef(mod.full, 9)
+
+regsub_full<-cbind( 
+  Cp     = summary(mod.full)$cp,
+  r2     = summary(mod.full)$rsq,
+  Adj_r2 = summary(mod.full)$adjr2,
+  BIC    =summary(mod.full)$bic)
+kable(regsub_full)
+
+
+################
+
+mod_best_var<-glm(y ~., family = binomial(link = "logit"), data = Port_bank)
+mod.best.sum<-summary(mod_best_var)
+kable(exp(mod_best_var$coefficients))
+exp(mod.best.sum$coefficients)
+library(VGAM)
+mod_2 <- vglm(ordered(y)~., family=cumulative(parallel = T), data=Port_bank)
+summary(mod_2)
+kable(mod.best.sum$coefficients)
+kable(Anova(mod_best_var))
+kable(anova(mod_best_var))
+Anova(mod_best_var)
+anova(mod_best_var)
+mod_best_var$deviance; mod_best_var$df.residual
+1 - pchisq(mod_best_var$deviance, mod_best_var$df.residual)
+      
+
+```
+
+# fit each variable with the response var.
+
+```{r}
+
+```
+
+## Train and Test
+
+* Separate the dataset in to 80% of the data to train and 20% of the data to test
+
+```{r}
+set.seed(1234)
+sep<-sample(2, nrow(Port_bank), replace = TRUE, prob = c(0.8, 0.2))
+train<-Port_bank[sep==1,]
+test<-Port_bank[sep==2,]
+levels(train$y)
+train$y<-ifelse(train$y =="yes", 1, 0)
+#trainn data
+log_train<-glm(y ~., data = train, family = binomial(link = "logit"))
+summary(log_train)
+pred_train<-predict(log_train, train, type = "response")
+head(train)
+head(pred_train)
+predict_train<-ifelse(pred_train > 0.5, 1, 0)
+head(predict_train)
+library(caret)
+#confusion matrix of the train data.
+pred_actual_table<-table(predicted=predict_train, actual=train$y)
+pred_actual_table
+str(train)
+confusionMatrix(pred_actual_table)
+## plot ROC
+#install.packages("ROCR")
+#library(ROCR)
+
+
+
+###########################
+test$y<-ifelse(test$y =="yes", 1, 0)
+#trainn data
+log_test<-glm(y ~., data = test, family = binomial(link = "logit"))
+summary(log_test)
+pred_test<-predict(log_test, test, type = "response")
+head(test)
+head(pred_test)
+predict_test<-ifelse(pred_test > 0.5, 1, 0)
+head(predict_test)
+
+#confusion matrix of the train data.
+pred_table_test<-table(predicted=predict_test, actual=test$y)
+pred_table_test
+confusionMatrix(pred_table_test)
+```
+
+
+
